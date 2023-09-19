@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<robot name="tmini_pro" xmlns:xacro="http://playerstage.sourceforge.net/gazebo/xmlschema/#xacro">
+
+  <xacro:arg name="name" default=""/>
+  <xacro:arg name="base_frame_id" default="base_link"/>
+  <xacro:arg name="lidar_frame_id" default="base_laser"/>
+
+  <xacro:property name="_name" value="$(arg name)"/>
+  <xacro:if value="${_name != ''}">
+    <xacro:property name="tf_prefix" value="${_name}/"/>
+  </xacro:if>
+  <xacro:if value="${_name == ''}">
+    <xacro:property name="tf_prefix" value=""/>
+  </xacro:if>
+
+  <link name="${tf_prefix}$(arg base_frame_id)"/>
+
+  <link name="${tf_prefix}body">
+    <inertial>
+      <origin xyz="0 0 0.5" rpy="0 0 0"/>
+      <mass value="1"/>
+      <inertia ixx="100"  ixy="0"  ixz="0" iyy="100" iyz="0" izz="100" />
+    </inertial>
+  
+    <visual>
+      <origin xyz="0 0 0.01" rpy="0 0 0" />
+      <geometry>
+        <box size="0.038 0.038 0.02" />
+      </geometry>
+      <material name="black"/>
+    </visual>
+
+    <visual>
+      <origin xyz="0 0 0.027" rpy="0 0 0" />
+      <geometry>
+        <cylinder radius="0.019" length="0.014" />
+      </geometry>
+      <material name="black"/>
+    </visual>
+  
+    <collision>
+      <origin xyz="0 0 0.019" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.038 0.038 0.034"/>
+      </geometry>
+    </collision>
+  </link>  
+
+  <link name="${tf_prefix}$(arg lidar_frame_id)"/>
+
+  <joint name="${tf_prefix}_joint_body" type="fixed">
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <parent link="${tf_prefix}$(arg base_frame_id)"/>
+      <child link="${tf_prefix}body"/>
+  </joint>
+
+  <joint name="${tf_prefix}_joint_lidar" type="fixed">
+      <origin xyz="0 0 0.027" rpy="0 0 0"/>
+      <parent link="${tf_prefix}$(arg base_frame_id)"/>
+      <child link="${tf_prefix}$(arg lidar_frame_id)"/>
+  </joint>
+
+  <material name="black">
+      <color rgba="0.0 0.0 0.0 1.0"/>
+  </material>
+
+</robot>
