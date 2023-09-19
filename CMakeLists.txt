@@ -5,7 +5,7 @@ project(ydlidar_ros2_driver C CXX)
 ##################ros2#############################################
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -53,11 +53,25 @@ ament_target_dependencies(${PROJECT_NAME}_node
 target_link_libraries(${PROJECT_NAME}_node
     ${YDLIDAR_SDK_LIBRARIES})
 
+add_executable(${PROJECT_NAME}_node_2
+    src/${PROJECT_NAME}_node_2.cpp)
+#---------------------------------------------------------------------------------------
+# link libraries
+#--------------------------------------------------------------------------------------
+ament_target_dependencies(${PROJECT_NAME}_node_2
+    "rclcpp"
+    "sensor_msgs"
+    )
+
+target_link_libraries(${PROJECT_NAME}_node_2
+    ${YDLIDAR_SDK_LIBRARIES})
+
 #---------------------------------------------------------------------------------------
 # generate excutable and add libraries
 #---------------------------------------------------------------------------------------
 add_executable(${PROJECT_NAME}_client
     src/${PROJECT_NAME}_client.cpp)
+
 #---------------------------------------------------------------------------------------
 # link libraries
 #--------------------------------------------------------------------------------------
@@ -73,10 +87,10 @@ ament_target_dependencies(${PROJECT_NAME}_client
 # Install
 #---------------------------------------------------------------------------------------
 install(TARGETS
-    ${PROJECT_NAME}_node ${PROJECT_NAME}_client
+    ${PROJECT_NAME}_node ${PROJECT_NAME}_node_2 ${PROJECT_NAME}_client
     DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch params startup config
+install(DIRECTORY launch params startup config urdf
     DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
