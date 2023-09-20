@@ -20,7 +20,7 @@
 
   <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output="screen" args="--ros-args --log-level info">
     <param name="port" value="$(var port)"/>
-    <param name="frame_id" value="$(var frame_id)"/>
+    <param name="frame_id" value="$(var name)/$(var frame_id)"/>
     <param name="frequency" value="$(var frequency)"/>
     <param name="ignore_array" value=""/>
     <param name="baudrate" value="230400"/>
@@ -44,7 +44,7 @@
 
   <include file="$(find-pkg-share ydlidar_ros2_driver)/launch/model.launch.py">
     <arg name="model" value="tmini_pro"/>
-    <arg name="name" value="tmini_pro"/>
+    <arg name="name" value="$(var name)"/>
     <arg name="lidar_frame_id" value="$(var frame_id)"/>
   </include>
 
