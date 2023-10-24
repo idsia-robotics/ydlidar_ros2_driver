@@ -95,6 +95,7 @@ class YDLidarDriver : public rclcpp::Node {
         initialized(false) {
     init_lidar_parameters();
     msg.header.frame_id = declare_parameter("frame_id", "laser_frame");
+    bool use_sensor_data_qos = declare_parameter("use_sensor_data_qos", true);
     rclcpp::PublisherOptions pub_options;
 
 #if ON_DEMAND_AVAILABLE
@@ -107,7 +108,7 @@ class YDLidarDriver : public rclcpp::Node {
         };
 #endif
     laser_pub = create_publisher<sensor_msgs::msg::LaserScan>(
-        "scan", rclcpp::SensorDataQoS(), pub_options);
+        "scan", use_sensor_data_qos ? rclcpp::SensorDataQoS() : rclcpp::QoS{1}, pub_options);
     set_activation(
         declare_parameter("activation", ON_DEMAND_AVAILABLE ? 2 : 0));
     callback_handle_ = add_on_set_parameters_callback(std::bind(
