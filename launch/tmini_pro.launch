@@ -56,7 +56,7 @@
   
     <group if="$(var has_parent_frame)">
       <group if="$(var tf2_ros_old_api)">
-        <node name="static_tf_pub_lidar" pkg="tf2_ros" exec="static_transform_publisher" args="  $(var x) $(var y) $(var z) $(var roll) $(var pitch) $(var yaw) $(var parent_frame_id)   $(var name)/base_link " output="screen"  />
+        <node name="static_tf_pub_lidar" pkg="tf2_ros" exec="static_transform_publisher" args="$(var x) $(var y) $(var z) $(var roll) $(var pitch) $(var yaw) $(var parent_frame_id) $(var name)/base_link" output="screen"  />
       </group>
       <group unless="$(var tf2_ros_old_api)">
         <node name="static_tf_pub_lidar" pkg="tf2_ros" exec="static_transform_publisher" args="  --x $(var x) --y $(var y) --z $(var z) --roll $(var roll) --pitch $(var pitch) --yaw   $(var yaw) --frame-id $(var parent_frame_id) --child-frame-id $(var name)/base_link "   output="screen"  />
