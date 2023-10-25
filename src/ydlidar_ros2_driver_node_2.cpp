@@ -23,19 +23,18 @@
 #include <tuple>
 #include <vector>
 
+#include "rcl_interfaces/msg/parameter_event.hpp"
 #include "rclcpp/clock.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/time_source.hpp"
-#include "rcl_interfaces/msg/parameter_event.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
 #include "src/CYdLidar.h"
 
-
 #if __has_include("rclcpp/event_handler.hpp")
 #include "rclcpp/event_handler.hpp"
-#define ON_DEMAND_AVAILABLE true
+#define EVENT_HANDLER_AVAILABLE true
 #else
-#define ON_DEMAND_AVAILABLE false
+#define EVENT_HANDLER_AVAILABLE false
 #endif
 
 using namespace std::chrono_literals;
@@ -96,9 +95,10 @@ class YDLidarDriver : public rclcpp::Node {
     init_lidar_parameters();
     msg.header.frame_id = declare_parameter("frame_id", "laser_frame");
     bool use_sensor_data_qos = declare_parameter("use_sensor_data_qos", true);
+    float count_subs_period_s = declare_parameter("count_subs_period", 1.0f);
     rclcpp::PublisherOptions pub_options;
-
-#if ON_DEMAND_AVAILABLE
+    const std::string topic = "scan";
+#if EVENT_HANDLER_AVAILABLE
     RCLCPP_INFO(get_logger(), "ON DEMAND AVAILABLE");
     pub_options.event_callbacks.matched_callback =
         [this](const rclcpp::MatchedInfo &s) {
@@ -106,11 +106,25 @@ class YDLidarDriver : public rclcpp::Node {
           subscribers = s.current_count;
           check_activation();
         };
-#endif
+#else
+    if (count_subs_period_s > 0) {
+      count_subs_timer = create_wall_timer(
+          std::chrono::milliseconds(
+              static_cast<unsigned long>(1000 * count_subs_period_s)),
+          [this, topic]() {
+            subscribers = count_subscribers(topic);
+            check_activation();
+          });
+    } else {
+      RCLCPP_WARN(get_logger(),
+                  "Will not monitor subscribers: negative period %.2f s",
+                  count_subs_period_s);
+    }
+#endif  // EVENT_HANDLER_AVAILABLE
     laser_pub = create_publisher<sensor_msgs::msg::LaserScan>(
-        "scan", use_sensor_data_qos ? rclcpp::SensorDataQoS() : rclcpp::QoS{1}, pub_options);
-    set_activation(
-        declare_parameter("activation", ON_DEMAND_AVAILABLE ? 2 : 0));
+        topic, use_sensor_data_qos ? rclcpp::SensorDataQoS() : rclcpp::QoS{1},
+        pub_options);
+    set_activation(declare_parameter("activation", 2));
     callback_handle_ = add_on_set_parameters_callback(std::bind(
         &YDLidarDriver::parametersCallback, this, std::placeholders::_1));
     timer_ = create_wall_timer(20ms, std::bind(&YDLidarDriver::update, this));
@@ -146,6 +160,7 @@ class YDLidarDriver : public rclcpp::Node {
   bool initialized;
   rclcpp::TimerBase::SharedPtr timer_;
   OnSetParametersCallbackHandle::SharedPtr callback_handle_;
+  rclcpp::TimerBase::SharedPtr count_subs_timer;
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters) {
@@ -246,10 +261,12 @@ class YDLidarDriver : public rclcpp::Node {
 
     ActiveMode value{v};
 
-    if ((value == ActiveMode::ON_DEMAND) && !ON_DEMAND_AVAILABLE) {
-      RCLCPP_WARN(get_logger(), "On-demand only supported from ROS 2 Iron");
-      return;
-    }
+    /*
+        if ((value == ActiveMode::ON_DEMAND) && !ON_DEMAND_AVAILABLE) {
+          RCLCPP_WARN(get_logger(), "On-demand only supported from ROS 2 Iron");
+          return;
+        }
+    */
     if (activation != value) {
       activation = value;
       check_activation();
@@ -268,7 +285,7 @@ class YDLidarDriver : public rclcpp::Node {
         laser.checkScanFrequency();
         if (is_scanning) {
           laser.turnOn();
-        }        
+        }
       }
     }
   }
