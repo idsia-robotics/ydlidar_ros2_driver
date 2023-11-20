@@ -7,16 +7,22 @@
   <arg name="inverted" default="true"/>
   <arg name="use_sensor_data_qos" default="true"/>
   <arg name="count_subs_period" default="1.0"/>
+  <arg name="range_max" default="12.0"/>
+  <arg name="range_min" default="0.03"/>
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
   <arg name="roll" default="0.0"/>
   <arg name="pitch" default="0.0"/>
   <arg name="yaw" default="0.0"/>
+  <arg name="mask" default=""/>
   <arg name="parent_frame_id" default=""/>
-  <arg name="activation" default="$(eval '2 if __import__(\'importlib.util\').util.find_spec(\'rclpy.event_handler\') else 0')"/>
+  <!-- <arg name="activation" default="$(eval '2 if __import__(\'importlib.util\').util.find_spec(\'rclpy.event_handler\') else 0')"/> -->
+  <arg name="activation" default="2"/>
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
+
+  <let name="tf_prefix" value="$(eval '\'$(var name)/\' if \'$(var name)\' else \'\'')"/>
 
   <group>
     
@@ -24,7 +30,7 @@
 
     <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output  ="screen" args="--ros-args --log-level info">
       <param name="port" value="$(var port)"/>
-      <param name="frame_id" value="$(var name)/$(var frame_id)"/>
+      <param name="frame_id" value="$(var tf_prefix)$(var frame_id)"/>
       <param name="frequency" value="$(var frequency)"/>
       <param name="ignore_array" value=""/>
       <param name="baudrate" value="230400"/>
@@ -43,8 +49,9 @@
       <param name="support_motor_dtr" value="false"/>
       <param name="angle_max" value="180.0"/>
       <param name="angle_min" value="-180.0"/>
-      <param name="range_max" value="12.0"/>
-      <param name="range_min" value="0.03"/>
+      <param name="range_max" value="$(var range_max)"/>
+      <param name="range_min" value="$(var range_min)"/>
+      <param name="mask" value="$(var mask)"/>
       <param name="activation" value="$(var activation)"/>
     </node>
   

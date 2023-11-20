@@ -82,6 +82,16 @@ const std::map<std::string, LidarParameter<float>> float_params{
 
 enum class ActiveMode : int { OFF = 0, ON = 1, ON_DEMAND = 2 };
 
+static float angle_diff(float a, float b) {
+  float da = fmod(a - b + M_PI, 2 * M_PI) - M_PI;
+  if (da < -M_PI) da += 2 * M_PI;
+  return da;
+}
+
+static float rad2deg(float value) { return value * 180.0f / M_PI; }
+
+static float deg2rad(float value) { return value / 180.0f * M_PI; }
+
 class YDLidarDriver : public rclcpp::Node {
  public:
   YDLidarDriver()
@@ -91,18 +101,34 @@ class YDLidarDriver : public rclcpp::Node {
         msg(),
         subscribers(0),
         activation(ActiveMode::OFF),
-        initialized(false) {
+        initialized(false),
+        has_mask(false),
+        negative_mask(),
+        positive_mask_indices(),
+        size(0) {
     init_lidar_parameters();
     msg.header.frame_id = declare_parameter("frame_id", "laser_frame");
     bool use_sensor_data_qos = declare_parameter("use_sensor_data_qos", true);
     float count_subs_period_s = declare_parameter("count_subs_period", 1.0f);
+    const std::string mask_string = declare_parameter("mask", "");
+    std::string s;
+    std::istringstream f(mask_string);
+    while (std::getline(f, s, ',')) {
+      negative_mask.push_back(deg2rad(std::stof(s)));
+    }
+    has_mask = negative_mask.size() > 1;
+
+    for (int i = 0; i < negative_mask.size(); i += 2) {
+      RCLCPP_INFO(get_logger(), "Will filter out angles in [%.2f, %.2f]",
+                  negative_mask[i], negative_mask[i] + negative_mask[i + 1]);
+    }
     rclcpp::PublisherOptions pub_options;
     const std::string topic = "scan";
 #if EVENT_HANDLER_AVAILABLE
-    RCLCPP_INFO(get_logger(), "ON DEMAND AVAILABLE");
+    RCLCPP_INFO(get_logger(), "Event handler available");
     pub_options.event_callbacks.matched_callback =
         [this](const rclcpp::MatchedInfo &s) {
-          RCLCPP_INFO(get_logger(), "matched_callback %d", s.current_count);
+          RCLCPP_DEBUG(get_logger(), "matched_callback %d", s.current_count);
           subscribers = s.current_count;
           check_activation();
         };
@@ -128,6 +154,22 @@ class YDLidarDriver : public rclcpp::Node {
     callback_handle_ = add_on_set_parameters_callback(std::bind(
         &YDLidarDriver::parametersCallback, this, std::placeholders::_1));
     timer_ = create_wall_timer(20ms, std::bind(&YDLidarDriver::update, this));
+  }
+
+  void update_mask_indices(float min_angle_deg, float delta_angle_deg) {
+    if (!has_mask) return;
+    positive_mask_indices.resize(size);
+    float angle = min_angle_deg;
+    for (size_t i = 0; i < size; i++, angle += delta_angle_deg) {
+      positive_mask_indices[i] = true;
+      for (size_t j = 0; j < negative_mask.size(); j += 2) {
+        const float da = angle_diff(angle, negative_mask[j]);
+        if (da > 0 && da < negative_mask[j + 1]) {
+          positive_mask_indices[i] = false;
+          break;
+        }
+      }
+    }
   }
 
   bool init() {
@@ -161,6 +203,10 @@ class YDLidarDriver : public rclcpp::Node {
   rclcpp::TimerBase::SharedPtr timer_;
   OnSetParametersCallbackHandle::SharedPtr callback_handle_;
   rclcpp::TimerBase::SharedPtr count_subs_timer;
+  bool has_mask;
+  std::vector<double> negative_mask;
+  std::vector<bool> positive_mask_indices;
+  unsigned size;
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters) {
@@ -212,16 +258,24 @@ class YDLidarDriver : public rclcpp::Node {
       msg.time_increment = scan.config.time_increment;
       msg.range_min = scan.config.min_range;
       msg.range_max = scan.config.max_range;
-      int size = (scan.config.max_angle - scan.config.min_angle) /
-                     scan.config.angle_increment +
-                 1;
-      msg.ranges.resize(size);
-      msg.intensities.resize(size);
+      int new_size = (scan.config.max_angle - scan.config.min_angle) /
+                         scan.config.angle_increment +
+                     1;
+      if (size != new_size) {
+        size = new_size;
+        msg.ranges.resize(size);
+        msg.intensities.resize(size);
+        update_mask_indices(scan.config.min_angle, scan.config.angle_increment);
+      }
       for (size_t i = 0; i < scan.points.size(); i++) {
         int index = std::ceil((scan.points[i].angle - scan.config.min_angle) /
                               scan.config.angle_increment);
         if (index >= 0 && index < size) {
-          if (scan.points[i].range >= scan.config.min_range) {
+          if (has_mask && !positive_mask_indices[index]) {
+            msg.ranges[index] = 0;
+            msg.intensities[index] = 0;
+          } else if (scan.points[i].range >= scan.config.min_range &&
+                     scan.points[i].range <= scan.config.max_range) {
             msg.ranges[index] = scan.points[i].range;
             msg.intensities[index] = scan.points[i].intensity;
           } else {
