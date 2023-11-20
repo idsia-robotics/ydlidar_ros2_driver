@@ -224,6 +224,9 @@ class YDLidarDriver : public rclcpp::Node {
           if (scan.points[i].range >= scan.config.min_range) {
             msg.ranges[index] = scan.points[i].range;
             msg.intensities[index] = scan.points[i].intensity;
+          } else {
+            msg.ranges[index] = 0;
+            msg.intensities[index] = 0;
           }
         }
       }
