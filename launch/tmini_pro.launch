@@ -35,7 +35,7 @@
 
     <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output="screen" args="--ros-args --log-level info">
       <param name="port" value="$(var port)"/>
-      <param name="frame_id" value="$(var tf_prefix)$(var frame_id)"/>
+      <param name="frame_id" value="$(var tf_prefix)/$(var frame_id)"/>
       <param name="frequency" value="$(var frequency)"/>
       <!-- <param name="ignore_array" value=""/> -->
       <param name="baudrate" value="230400"/>
@@ -60,8 +60,8 @@
       <param name="fixed_sector" value="$(var fixed_sector)"/>
       <param name="pointcloud">
         <param name="enable" value="$(var pointcloud)"/>
-        <param name="frame_id" value="$(var tf_prefix)$(var pointcloud_frame_id)"/>
-        <param name="fixed_frame_id" value="$(var tf_prefix)$(var pointcloud_fixed_frame_id)"/>
+        <param name="frame_id" value="$(var pointcloud_frame_id)"/>
+        <param name="fixed_frame_id" value="$(var pointcloud_fixed_frame_id)"/>
         <param name="intensity" value="$(var pointcloud_intensity)"/>
       </param>
       <param name="scan.enable" value="$(var scan)"/>
