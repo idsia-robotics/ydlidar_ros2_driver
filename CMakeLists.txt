@@ -19,6 +19,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(laser_geometry REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+
 
 ############## YDLIDAR SDK START#####################################
 #find ydlidar_sdk package
@@ -61,6 +65,9 @@ add_executable(${PROJECT_NAME}_node_2
 ament_target_dependencies(${PROJECT_NAME}_node_2
     "rclcpp"
     "sensor_msgs"
+    "laser_geometry"
+    "tf2_ros"
+    "tf2_sensor_msgs"
     )
 
 target_link_libraries(${PROJECT_NAME}_node_2

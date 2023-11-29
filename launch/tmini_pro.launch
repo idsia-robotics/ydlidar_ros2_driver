@@ -2,45 +2,49 @@
 
   <arg name="name" default=""/>
   <arg name="port" default="/dev/ttyUSB0"/>
-  <arg name="frame_id" default="base_laser"/>
-  <arg name="frequency" default="6.0"/>
-  <arg name="inverted" default="true"/>
+  <arg name="frequency" default="6.0"/>  
   <arg name="use_sensor_data_qos" default="true"/>
   <arg name="count_subs_period" default="1.0"/>
   <arg name="range_max" default="12.0"/>
   <arg name="range_min" default="0.03"/>
+  <arg name="delta_angle" default="3.1415926536"/>
+  <arg name="direction" default="-1"/>
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
   <arg name="roll" default="0.0"/>
   <arg name="pitch" default="0.0"/>
   <arg name="yaw" default="0.0"/>
+  <arg name="interpolation" default="linear"/>
+  <arg name="fixed_sector" default="true"/>
   <arg name="mask" default=""/>
+  <arg name="scan" default="2"/>
+  <arg name="frame_id" default="base_laser"/>
+  <arg name="pointcloud" default="2"/>
+  <arg name="pointcloud_frame_id" default="base_laser"/>
+  <arg name="pointcloud_fixed_frame_id" default="base_link"/>
+  <arg name="pointcloud_intensity" default="false"/>
   <arg name="parent_frame_id" default=""/>
-  <!-- <arg name="activation" default="$(eval '2 if __import__(\'importlib.util\').util.find_spec(\'rclpy.event_handler\') else 0')"/> -->
-  <arg name="activation" default="2"/>
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
-
   <let name="tf_prefix" value="$(eval '\'$(var name)/\' if \'$(var name)\' else \'\'')"/>
 
   <group>
     
     <push-ros-namespace namespace="$(var name)"/>
 
-    <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output  ="screen" args="--ros-args --log-level info">
+    <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output="screen" args="--ros-args --log-level info">
       <param name="port" value="$(var port)"/>
       <param name="frame_id" value="$(var tf_prefix)$(var frame_id)"/>
       <param name="frequency" value="$(var frequency)"/>
-      <param name="ignore_array" value=""/>
+      <!-- <param name="ignore_array" value=""/> -->
       <param name="baudrate" value="230400"/>
       <param name="lidar_type" value="1"/>
       <param name="device_type" value="0"/>
       <param name="sample_rate" value="4"/>
       <param name="intensity_bit" value="8"/>
-      <param name="fixed_resolution" value="true"/>
-      <param name="reversion" value="true"/>
-      <param name="inverted" value="$(var inverted)"/>
+      <param name="delta_angle" value="$(var delta_angle)"/>
+      <param name="direction" value="$(var direction)"/>
       <param name="use_sensor_data_qos" value="$(var use_sensor_data_qos)"/>
       <param name="count_subs_period" value="$(var count_subs_period)"/>
       <param name="auto_reconnect" value="true"/>
@@ -52,7 +56,15 @@
       <param name="range_max" value="$(var range_max)"/>
       <param name="range_min" value="$(var range_min)"/>
       <param name="mask" value="$(var mask)"/>
-      <param name="activation" value="$(var activation)"/>
+      <param name="interpolation" value="$(var interpolation)"/>
+      <param name="fixed_sector" value="$(var fixed_sector)"/>
+      <param name="pointcloud">
+        <param name="enable" value="$(var pointcloud)"/>
+        <param name="frame_id" value="$(var tf_prefix)$(var pointcloud_frame_id)"/>
+        <param name="fixed_frame_id" value="$(var tf_prefix)$(var pointcloud_fixed_frame_id)"/>
+        <param name="intensity" value="$(var pointcloud_intensity)"/>
+      </param>
+      <param name="scan.enable" value="$(var scan)"/>
     </node>
   
     <include file="$(find-pkg-share ydlidar_ros2_driver)/launch/model.launch.py">
