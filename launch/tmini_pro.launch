@@ -35,7 +35,7 @@
 
     <node name="ydlidar_driver" pkg="ydlidar_ros2_driver" exec="ydlidar_ros2_driver_node_2" output="screen" args="--ros-args --log-level info">
       <param name="port" value="$(var port)"/>
-      <param name="frame_id" value="$(var tf_prefix)/$(var frame_id)"/>
+      <param name="frame_id" value="$(var tf_prefix)$(var frame_id)"/>
       <param name="frequency" value="$(var frequency)"/>
       <!-- <param name="ignore_array" value=""/> -->
       <param name="baudrate" value="230400"/>
