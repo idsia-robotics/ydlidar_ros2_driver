@@ -35,7 +35,9 @@
 #include "sensor_msgs/msg/point_cloud2.hpp"
 #include "src/CYdLidar.h"
 #include "tf2/exceptions.h"
+#include "tf2_ros/async_buffer_interface.h"
 #include "tf2_ros/buffer.h"
+#include "tf2_ros/create_timer_ros.h"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_sensor_msgs/tf2_sensor_msgs.hpp"
 
@@ -212,13 +214,20 @@ class YDLidarDriver : public rclcpp::Node {
         negative_mask(),
         negative_mask_indices(),
         interpolation(Interpolation::nearest_neighbor),
-        fixed_sector(true) {
+        fixed_sector(true),
+        tf_timeout(0, 100000000) {
     init_lidar_parameters();
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.read_only = true;
+
+    long tf_timeout_ms =
+        std::max(0L, declare_parameter("pointcloud.tf_timeout_ms", 100, param_desc));
+    tf_timeout = rclcpp::Duration(0, 1000000 * tf_timeout_ms);
+
     int scan_mode = declare_parameter("scan.enable", 2);
     int pointcloud_mode = declare_parameter("pointcloud.enable", 2);
-    add_intensity_to_pointcloud = declare_parameter("pointcloud.intensity", false, param_desc);
+    add_intensity_to_pointcloud =
+        declare_parameter("pointcloud.intensity", false, param_desc);
     set_interpolation(declare_parameter("interpolation", "linear"));
     fixed_sector = declare_parameter("fixed_sector", true);
     scan_msg.header.frame_id =
@@ -247,6 +256,9 @@ class YDLidarDriver : public rclcpp::Node {
     pointcloud_pub.init("pointcloud", qos, cb, count_subs_period_s);
     pointcloud_pub.set_activation(pointcloud_mode);
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+        this->get_node_base_interface(), this->get_node_timers_interface());
+    tf_buffer_->setCreateTimerInterface(timer_interface);
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     callback_handle_ = add_on_set_parameters_callback(std::bind(
         &YDLidarDriver::parametersCallback, this, std::placeholders::_1));
@@ -265,7 +277,7 @@ class YDLidarDriver : public rclcpp::Node {
   }
 
   void deinit() {
-    if (initialized) {
+    if (initialized) {      
       is_scanning = false;
       initialized = false;
       laser.turnOff();
@@ -296,6 +308,7 @@ class YDLidarDriver : public rclcpp::Node {
   bool fixed_sector;
   bool negative_mask_indices_valid;
   bool add_intensity_to_pointcloud;
+  rclcpp::Duration tf_timeout;
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters) {
@@ -481,6 +494,36 @@ class YDLidarDriver : public rclcpp::Node {
   }
 
   void publish_pointcloud() {
+
+    if(!rclcpp::ok()) return;
+
+    // See laser_geometry/src/laser_geometry.cpp
+    // We need to wait until we can transform at the timepoint of the final ranging.
+    rclcpp::Time end_time = scan_msg.header.stamp;
+    if (!scan_msg.ranges.empty()) {
+      end_time += rclcpp::Duration::from_seconds(
+          static_cast<double>(scan_msg.ranges.size() - 1) *
+          static_cast<double>(scan_msg.time_increment));
+    }
+
+    tf_buffer_->waitForTransform(
+        pointcloud_fixed_frame_id, scan_msg.header.frame_id, end_time,
+        tf_timeout,
+        [this,
+         scan_msg = scan_msg](const tf2_ros::TransformStampedFuture &future) {
+          try {
+            future.get();
+            _publish_pointcloud(scan_msg);
+          } catch (const tf2::TransformException &ex) {
+            RCLCPP_WARN(get_logger(),
+                        "Waited too long for transform between %s and %s",
+                        pointcloud_fixed_frame_id.c_str(),
+                        scan_msg.header.frame_id.c_str());
+          }
+        });
+  }
+
+  void _publish_pointcloud(const sensor_msgs::msg::LaserScan &scan_msg) {
     sensor_msgs::msg::PointCloud2 cloud_msg;
     try {
       projector.transformLaserScanToPointCloud(

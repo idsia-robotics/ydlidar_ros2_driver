@@ -24,6 +24,7 @@
   <arg name="pointcloud_frame_id" default="base_laser"/>
   <arg name="pointcloud_fixed_frame_id" default="base_link"/>
   <arg name="pointcloud_intensity" default="false"/>
+  <arg name="pointcloud_tf_timeout_ms" default="100"/>
   <arg name="parent_frame_id" default=""/>
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
@@ -63,6 +64,7 @@
         <param name="frame_id" value="$(var pointcloud_frame_id)"/>
         <param name="fixed_frame_id" value="$(var pointcloud_fixed_frame_id)"/>
         <param name="intensity" value="$(var pointcloud_intensity)"/>
+        <param name="tf_timeout_ms" value="$(var pointcloud_tf_timeout_ms)"/>
       </param>
       <param name="scan.enable" value="$(var scan)"/>
     </node>
