@@ -78,8 +78,8 @@ const std::map<std::string, LidarParameter<int>> int_params{
 
 const std::map<std::string, LidarParameter<bool>> bool_params{
     {"fixed_resolution", {true, false, LidarPropFixedResolution, false}},
-    {"reversion", {false, false, LidarPropReversion, false}},
-    {"inverted", {false, false, LidarPropInverted, false}},
+    {"reversion", {true, false, LidarPropReversion, false}},
+    {"inverted", {true, false, LidarPropInverted, false}},
     {"auto_reconnect", {true, false, LidarPropAutoReconnect, true}},
     {"isSingleChannel", {true, false, LidarPropSingleChannel, false}},
     {"intensity", {true, false, LidarPropIntenstiy, false}},
@@ -215,17 +215,20 @@ class YDLidarDriver : public rclcpp::Node {
         negative_mask_indices(),
         interpolation(Interpolation::nearest_neighbor),
         fixed_sector(true),
-        tf_timeout(0, 100000000) {
+        tf_timeout(0, 100000000),
+        force_cc_scan(false),
+        size_cc(0) {
     init_lidar_parameters();
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
     param_desc.read_only = true;
 
-    long tf_timeout_ms =
-        std::max(0L, declare_parameter("pointcloud.tf_timeout_ms", 100, param_desc));
+    long tf_timeout_ms = std::max(
+        0L, declare_parameter("pointcloud.tf_timeout_ms", 100, param_desc));
     tf_timeout = rclcpp::Duration(0, 1000000 * tf_timeout_ms);
 
     int scan_mode = declare_parameter("scan.enable", 2);
     int pointcloud_mode = declare_parameter("pointcloud.enable", 2);
+    force_cc_scan = declare_parameter("scan.force_cc", false, param_desc);
     add_intensity_to_pointcloud =
         declare_parameter("pointcloud.intensity", false, param_desc);
     set_interpolation(declare_parameter("interpolation", "linear"));
@@ -277,7 +280,7 @@ class YDLidarDriver : public rclcpp::Node {
   }
 
   void deinit() {
-    if (initialized) {      
+    if (initialized) {
       is_scanning = false;
       initialized = false;
       laser.turnOff();
@@ -309,6 +312,8 @@ class YDLidarDriver : public rclcpp::Node {
   bool negative_mask_indices_valid;
   bool add_intensity_to_pointcloud;
   rclcpp::Duration tf_timeout;
+  bool force_cc_scan;
+  unsigned size_cc;
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters) {
@@ -494,11 +499,11 @@ class YDLidarDriver : public rclcpp::Node {
   }
 
   void publish_pointcloud() {
-
-    if(!rclcpp::ok()) return;
+    if (!rclcpp::ok()) return;
 
     // See laser_geometry/src/laser_geometry.cpp
-    // We need to wait until we can transform at the timepoint of the final ranging.
+    // We need to wait until we can transform at the timepoint of the final
+    // ranging.
     rclcpp::Time end_time = scan_msg.header.stamp;
     if (!scan_msg.ranges.empty()) {
       end_time += rclcpp::Duration::from_seconds(
@@ -603,6 +608,41 @@ class YDLidarDriver : public rclcpp::Node {
     }
   }
 
+  void update_scan_msg_fixed_cc(const LaserScan &scan,
+                                sensor_msgs::msg::LaserScan &msg) {
+    msg.header.stamp.sec = RCL_NS_TO_S(scan.stamp);
+    msg.header.stamp.nanosec = scan.stamp - RCL_S_TO_NS(msg.header.stamp.sec);
+    msg.angle_min = scan.config.min_angle;
+    msg.angle_max = scan.config.max_angle;
+    msg.angle_increment = scan.config.angle_increment;
+    msg.scan_time = scan.config.scan_time;
+    msg.time_increment = scan.config.time_increment;
+    msg.range_min = scan.config.min_range;
+    msg.range_max = scan.config.max_range;
+    int new_size = (scan.config.max_angle - scan.config.min_angle) /
+                       scan.config.angle_increment +
+                   1;
+    if (size_cc != new_size) {
+      size_cc = new_size;
+      msg.ranges.resize(size_cc);
+      msg.intensities.resize(size_cc);
+    }
+    for (size_t i = 0; i < scan.points.size(); i++) {
+      int index = std::ceil((scan.points[i].angle - scan.config.min_angle) /
+                            scan.config.angle_increment);
+      if (index >= 0 && index < size_cc) {
+        if (scan.points[i].range >= scan.config.min_range &&
+            scan.points[i].range <= scan.config.max_range) {
+          msg.ranges[index] = scan.points[i].range;
+          msg.intensities[index] = scan.points[i].intensity;
+        } else {
+          msg.ranges[index] = 0;
+          msg.intensities[index] = 0;
+        }
+      }
+    }
+  }
+
   float transform_angle(float value) const {
     return direction * value + delta_angle;
   }
@@ -617,7 +657,11 @@ class YDLidarDriver : public rclcpp::Node {
     LaserScan scan;
     if (laser.doProcessSimple(scan)) {
       if (scan_pub.is_active() || pointcloud_pub.is_active()) {
-        update_scan_msg(scan, scan_msg);
+        if (force_cc_scan) {
+          update_scan_msg_fixed_cc(scan, scan_msg);
+        } else {
+          update_scan_msg(scan, scan_msg);
+        }
       }
       if (scan_pub.is_active()) {
         scan_pub.publish(scan_msg);

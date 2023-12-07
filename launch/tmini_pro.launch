@@ -26,6 +26,10 @@
   <arg name="pointcloud_intensity" default="false"/>
   <arg name="pointcloud_tf_timeout_ms" default="100"/>
   <arg name="parent_frame_id" default=""/>
+  <arg name="fixed_resolution" default="false"/>
+  <arg name="reversion" default="false"/>
+  <arg name="inverted" default="false"/>
+  <arg name="force_cc" default="false"/>
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
   <let name="tf_prefix" value="$(eval '\'$(var name)/\' if \'$(var name)\' else \'\'')"/>
@@ -59,6 +63,9 @@
       <param name="mask" value="$(var mask)"/>
       <param name="interpolation" value="$(var interpolation)"/>
       <param name="fixed_sector" value="$(var fixed_sector)"/>
+      <param name="fixed_resolution" value="$(var fixed_resolution)"/> 
+      <param name="reversion" value="$(var reversion)"/>
+      <param name="inverted" value="$(var inverted)"/>
       <param name="pointcloud">
         <param name="enable" value="$(var pointcloud)"/>
         <param name="frame_id" value="$(var pointcloud_frame_id)"/>
@@ -67,6 +74,7 @@
         <param name="tf_timeout_ms" value="$(var pointcloud_tf_timeout_ms)"/>
       </param>
       <param name="scan.enable" value="$(var scan)"/>
+      <param name="scan.force_cc" value="$(var force_cc)"/>
     </node>
   
     <include file="$(find-pkg-share ydlidar_ros2_driver)/launch/model.launch.py">
