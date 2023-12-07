@@ -4,6 +4,7 @@
   <xacro:arg name="name" default=""/>
   <xacro:arg name="base_frame_id" default="base_link"/>
   <xacro:arg name="lidar_frame_id" default="base_laser"/>
+  <xacro:arg name="reversed" default="false"/>
 
   <xacro:property name="_name" value="$(arg name)"/>
   <xacro:if value="${_name != ''}">
@@ -12,6 +13,14 @@
   <xacro:if value="${_name == ''}">
     <xacro:property name="tf_prefix" value=""/>
   </xacro:if>
+
+  <xacro:if value="$(arg reversed)">
+    <xacro:property name="roll" value="${pi}"/>
+  </xacro:if>
+
+  <xacro:unless value="$(arg reversed)">
+    <xacro:property name="roll" value="0"/>
+  </xacro:unless>
 
   <link name="${tf_prefix}$(arg base_frame_id)"/>
 
@@ -55,7 +64,7 @@
   </joint>
 
   <joint name="${tf_prefix}_joint_lidar" type="fixed">
-      <origin xyz="0 0 0.027" rpy="0 0 0"/>
+      <origin xyz="0 0 0.027" rpy="${roll} 0 0"/>
       <parent link="${tf_prefix}$(arg base_frame_id)"/>
       <child link="${tf_prefix}$(arg lidar_frame_id)"/>
   </joint>

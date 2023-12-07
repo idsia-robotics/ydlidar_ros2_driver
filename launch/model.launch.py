@@ -14,10 +14,11 @@ args_descriptions = {
     "model": "Lidar model",
     "base_frame_id": "The base frame",
     "lidar_frame_id": "The lidar frame",
+    "reversed": "Whether upside down or not",
 }
 
 def urdf(name: str = '', model: str = '', base_frame_id: str = "base_link",
-         lidar_frame_id: str = "base_laser") -> str:
+         lidar_frame_id: str = "base_laser", reversed: bool = False) -> str:
     urdf_xacro = os.path.join(
         get_package_share_directory('ydlidar_ros2_driver'), 'urdf',
         f'{model}.urdf.xacro')

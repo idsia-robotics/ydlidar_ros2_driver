@@ -30,6 +30,7 @@
   <arg name="reversion" default="false"/>
   <arg name="inverted" default="false"/>
   <arg name="force_cc" default="false"/>
+  <arg name="reversed" default="false"/>
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
   <let name="tf_prefix" value="$(eval '\'$(var name)/\' if \'$(var name)\' else \'\'')"/>
@@ -66,6 +67,7 @@
       <param name="fixed_resolution" value="$(var fixed_resolution)"/> 
       <param name="reversion" value="$(var reversion)"/>
       <param name="inverted" value="$(var inverted)"/>
+      <param name="reversed" value="$(var reversed)"/>
       <param name="pointcloud">
         <param name="enable" value="$(var pointcloud)"/>
         <param name="frame_id" value="$(var pointcloud_frame_id)"/>
@@ -81,6 +83,7 @@
       <arg name="model" value="tmini_pro"/>
       <arg name="name" value="$(var name)"/>
       <arg name="lidar_frame_id" value="$(var frame_id)"/>
+      <arg name="reversed" value="$(var reversed)"/>
     </include>
   
     <group if="$(var has_parent_frame)">
