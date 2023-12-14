@@ -8,7 +8,6 @@
   <arg name="range_max" default="12.0"/>
   <arg name="range_min" default="0.03"/>
   <arg name="delta_angle" default="180.0"/>
-  <arg name="direction" default="-1"/>
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.0"/>
@@ -34,6 +33,8 @@
   <let name="tf2_ros_old_api" value="$(eval '\'$(env ROS_DISTRO)\' == \'foxy\'')"/>
   <let name="has_parent_frame" value="$(eval '\'$(var parent_frame_id)\' != \'\'')"/>
   <let name="tf_prefix" value="$(eval '\'$(var name)/\' if \'$(var name)\' else \'\'')"/>
+  <let name="direction" value="1" if="$(var reversed)"/>
+  <let name="direction" value="-1" unless="$(var reversed)"/>
 
   <group>
     

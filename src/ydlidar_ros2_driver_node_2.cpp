@@ -216,7 +216,6 @@ class YDLidarDriver : public rclcpp::Node {
         interpolation(Interpolation::nearest_neighbor),
         fixed_sector(true),
         tf_timeout(0, 100000000),
-        reversed(false),
         force_cc_scan(false),
         size_cc(0) {
     init_lidar_parameters();
@@ -229,7 +228,6 @@ class YDLidarDriver : public rclcpp::Node {
 
     int scan_mode = declare_parameter("scan.enable", 2);
     int pointcloud_mode = declare_parameter("pointcloud.enable", 2);
-    reversed = declare_parameter("reversed", false, param_desc);
     force_cc_scan = declare_parameter("scan.force_cc", false, param_desc);
     add_intensity_to_pointcloud =
         declare_parameter("pointcloud.intensity", false, param_desc);
@@ -316,7 +314,6 @@ class YDLidarDriver : public rclcpp::Node {
   rclcpp::Duration tf_timeout;
   bool force_cc_scan;
   unsigned size_cc;
-  bool reversed;
 
   rcl_interfaces::msg::SetParametersResult parametersCallback(
       const std::vector<rclcpp::Parameter> &parameters) {
@@ -422,23 +419,15 @@ class YDLidarDriver : public rclcpp::Node {
     float start_angle =
         ymath::normalize_angle(transform_angle(scan.points.at(0).angle));
     float end_angle = transform_angle(scan.points.at(size - 1).angle);
-    if (reversed) {
-      start_angle *= -1;
-      end_angle *= -1;
-    }
-    int d = direction;
-    if (reversed) {
-      d *= -1;
-    }
     float da = ymath::normalize_angle(end_angle - start_angle);
-    if (d > 0 && da < M_PI) {
+    if (direction > 0 && da < M_PI) {
       da += 2 * M_PI;
-    } else if (d < 0 && da > -M_PI) {
+    } else if (direction < 0 && da > -M_PI) {
       da -= 2 * M_PI;
     }
-    if (d > 0 && start_angle > 0) {
+    if (direction > 0 && start_angle > 0) {
       start_angle -= 2 * M_PI;
-    } else if (d < 0 && start_angle < 0) {
+    } else if (direction < 0 && start_angle < 0) {
       start_angle += 2 * M_PI;
     }
     msg.angle_min = start_angle;
@@ -621,15 +610,10 @@ class YDLidarDriver : public rclcpp::Node {
 
   void update_scan_msg_fixed_cc(const LaserScan &scan,
                                 sensor_msgs::msg::LaserScan &msg) {
-    msg.header.stamp.sec = RCL_NS_TO_S(scan.stamp);
-    msg.header.stamp.nanosec = scan.stamp - RCL_S_TO_NS(msg.header.stamp.sec);
+    fill_stamp_and_limits(msg, scan);
     msg.angle_min = scan.config.min_angle;
     msg.angle_max = scan.config.max_angle;
     msg.angle_increment = scan.config.angle_increment;
-    msg.scan_time = scan.config.scan_time;
-    msg.time_increment = scan.config.time_increment;
-    msg.range_min = scan.config.min_range;
-    msg.range_max = scan.config.max_range;
     int new_size = (scan.config.max_angle - scan.config.min_angle) /
                        scan.config.angle_increment +
                    1;
