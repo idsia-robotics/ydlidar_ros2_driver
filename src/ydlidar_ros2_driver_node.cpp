@@ -56,6 +56,10 @@ int main(int argc, char *argv[]) {
   node->declare_parameter("frame_id", frame_id);
   node->get_parameter("frame_id", frame_id);
 
+  std::string sensor_name = "";
+  node->declare_parameter("sensor_name", sensor_name);
+  node->get_parameter("sensor_name", sensor_name);
+
   //////////////////////int property/////////////////
   /// lidar baudrate
   int optval = 230400;
@@ -162,8 +166,12 @@ int main(int argc, char *argv[]) {
     RCLCPP_ERROR(node->get_logger(), "%s\n", laser.DescribeError());
   }
   
-  auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>("scan", rclcpp::SensorDataQoS());
-  auto pc_pub = node->create_publisher<sensor_msgs::msg::PointCloud>("point_cloud", rclcpp::SensorDataQoS());
+  // if sensor name not "" then publish to sensor_name + "_" + "scan" and "point_cloud" topics
+  if (sensor_name != "") {
+    sensor_name += "_";
+  }
+  auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>(sensor_name + "scan", rclcpp::SensorDataQoS());
+  auto pc_pub = node->create_publisher<sensor_msgs::msg::PointCloud>(sensor_name + "point_cloud", rclcpp::SensorDataQoS());
   
   auto stop_scan_service =
     [&laser](const std::shared_ptr<rmw_request_id_t> request_header,

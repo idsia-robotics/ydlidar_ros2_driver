@@ -27,15 +27,13 @@ import os
 
 def generate_launch_description():
     share_dir = get_package_share_directory('ydlidar_ros2_driver')
-    rviz_config_file = os.path.join(share_dir, 'config','ydlidar.rviz')
     parameter_file = LaunchConfiguration('params_file')
     node_name = 'ydlidar_ros2_driver_node'
 
     params_declare = DeclareLaunchArgument('params_file',
-                                           default_value=os.path.join(
-                                               share_dir, 'params', 'TG.yaml'),
+                                           default_value=os.path.join(share_dir, 'params', 'TG15_TIAGo.yaml'),
                                            description='FPath to the ROS2 parameters file to use.')
-    
+
     driver_node = LifecycleNode(package='ydlidar_ros2_driver',
                                 executable='ydlidar_ros2_driver_node',
                                 name='ydlidar_ros2_driver_node',
@@ -47,17 +45,11 @@ def generate_launch_description():
     tf2_node = Node(package='tf2_ros',
                     executable='static_transform_publisher',
                     name='static_tf_pub_laser',
-                    arguments=['0', '0', '0.02','0', '0', '0', '1','base_link','laser_frame'],
-                    )
-    rviz2_node = Node(package='rviz2',
-                    executable='rviz2',
-                    name='rviz2',
-                    arguments=['-d', rviz_config_file],
+                    arguments=['0', '0', '0.02','0', '0', '0', '1','lidar_back_base','lidar_back_frame'],
                     )
 
     return LaunchDescription([
         params_declare,
         driver_node,
         tf2_node,
-        rviz2_node,
     ])
