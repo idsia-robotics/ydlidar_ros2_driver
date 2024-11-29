@@ -68,6 +68,10 @@ int main(int argc, char *argv[]) {
   node->declare_parameter("pointcloud_topic_name", pointcloud_topic_name);
   node->get_parameter("pointcloud_topic_name", pointcloud_topic_name);
 
+  std::string publisher_qos = "reliable";
+  node->declare_parameter("publisher_qos", publisher_qos);
+  node->get_parameter("publisher_qos", publisher_qos);
+
   //////////////////////int property/////////////////
   /// lidar baudrate
   int optval = 230400;
@@ -190,7 +194,16 @@ int main(int argc, char *argv[]) {
     output_pointcloud_topic_name = pointcloud_topic_name;
   }
 
-  auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>(output_lidar_topic_name, rclcpp::SensorDataQoS());
+  auto sensor_data_publisher_qos= rclcpp::SensorDataQoS();
+  RCLCPP_ERROR(node->get_logger(), "%s\n", publisher_qos.c_str());
+  
+  if (publisher_qos == "reliable") {
+    sensor_data_publisher_qos.reliable();
+  } else if (publisher_qos == "best_effort") {
+    sensor_data_publisher_qos.best_effort();
+  }
+
+  auto laser_pub = node->create_publisher<sensor_msgs::msg::LaserScan>(output_lidar_topic_name, sensor_data_publisher_qos);
   auto pc_pub = node->create_publisher<sensor_msgs::msg::PointCloud>(pointcloud_topic_name, rclcpp::SensorDataQoS());
   
   auto stop_scan_service =
