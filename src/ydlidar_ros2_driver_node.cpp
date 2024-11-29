@@ -195,7 +195,6 @@ int main(int argc, char *argv[]) {
   }
 
   auto sensor_data_publisher_qos= rclcpp::SensorDataQoS();
-  RCLCPP_ERROR(node->get_logger(), "%s\n", publisher_qos.c_str());
   
   if (publisher_qos == "reliable") {
     sensor_data_publisher_qos.reliable();
